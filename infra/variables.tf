@@ -20,3 +20,9 @@ variable "monthly_budget_usd" {
   type        = string
   default     = "2"
 }
+
+variable "embed_model_id" {
+  description = "Bedrock embedding model. Enable it in the Bedrock console first."
+  type        = string
+  default     = "amazon.titan-embed-text-v2:0"
+}
