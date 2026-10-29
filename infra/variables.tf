@@ -26,3 +26,9 @@ variable "embed_model_id" {
   type        = string
   default     = "amazon.titan-embed-text-v2:0"
 }
+
+variable "chat_model_id" {
+  description = "Bedrock chat model. Nova Micro is the cheapest; Claude Haiku answers better."
+  type        = string
+  default     = "amazon.nova-micro-v1:0"
+}

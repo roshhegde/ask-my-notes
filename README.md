@@ -87,6 +87,31 @@ Only `.txt` and `.md` are supported for now. Each file is capped at 200 chunks s
 
 Run the unit tests locally with `cd lambdas/ingest && python -m pytest`.
 
+## Deploy step 3: ask questions
+
+Make sure **Amazon Nova Micro** is enabled in Bedrock, then:
+
+```bash
+cd infra
+terraform apply          # adds the ask Lambda and an HTTP API
+URL=$(terraform output -raw ask_url)
+curl -s -X POST "$URL" -H 'content-type: application/json' \
+  -d '{"question": "Why does this project avoid OpenSearch?"}'
+```
+
+You should get back JSON with an `answer` and the `sources` it used.
+
+What happened: the Lambda embedded your question with the same Titan model, scored every stored chunk by cosine similarity (how closely two vectors point the same way), kept the top 4, and sent them to Nova Micro with instructions to answer only from those notes. That is the whole RAG idea.
+
+Things to try:
+- Ask something your notes don't cover. The model should say it doesn't know.
+- Change `chat_model_id` in `terraform.tfvars` to a Claude Haiku model ID and compare the answers. Haiku costs more per question.
+- Check token usage per question with `aws logs tail /aws/lambda/ask-my-notes-ask --since 10m`.
+
+The API has no login, so it is throttled to 1 request per second and questions are capped at 500 characters. Don't share the URL publicly, and run `terraform destroy` when you're not using it.
+
+Unit tests: `cd lambdas/ask && python -m pytest`.
+
 ## Teardown (do this whenever you're done for a while)
 
 ```bash
