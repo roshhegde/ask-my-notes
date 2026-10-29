@@ -45,7 +45,7 @@ Nothing here runs when idle. Check current prices on the AWS pricing pages befor
 
 - An AWS account and the AWS CLI configured (`aws sts get-caller-identity` works)
 - Terraform 1.6 or newer
-- In the Bedrock console (us-east-1), confirm access to **Titan Text Embeddings V2** and **Amazon Nova Micro**. You need this from step 2 on.
+- Nothing to enable in Bedrock: Titan and Nova models switch on automatically the first time your account calls them.
 
 ## Deploy step 1
 
@@ -69,7 +69,7 @@ aws s3 ls s3://$BUCKET/notes/
 
 ## Deploy step 2: ingest
 
-Enable **Titan Text Embeddings V2** in the Bedrock console (Model access, us-east-1), then:
+Bedrock models are enabled automatically on first use, so just run:
 
 ```bash
 cd infra
