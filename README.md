@@ -57,7 +57,7 @@ terraform plan     # read it: you should see 3 resources to add
 terraform apply
 ```
 
-Then open the email from AWS Budgets and confirm the subscription, otherwise alerts won't arrive.
+AWS Budgets emails you directly, so there's no subscription to confirm. To check that the budget exists, open Billing → Budgets in the console.
 
 Try the bucket:
 
