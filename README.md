@@ -89,7 +89,7 @@ Run the unit tests locally with `cd lambdas/ingest && python -m pytest`.
 
 ## Deploy step 3: ask questions
 
-Make sure **Amazon Nova Micro** is enabled in Bedrock, then:
+Nova Micro switches on automatically the first time the ask Lambda calls it. Run:
 
 ```bash
 cd infra
