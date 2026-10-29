@@ -6,12 +6,19 @@ per note to s3://<bucket>/index/<same path>.json that the ask Lambda loads.
 
 import json
 import os
+import time
 import urllib.parse
 
 import boto3
+from botocore.config import Config
 
 s3 = boto3.client("s3")
-bedrock = boto3.client("bedrock-runtime")
+# New AWS accounts get low Bedrock quotas. Adaptive mode backs off when
+# throttled, and 10 attempts gives it room to wait instead of failing.
+bedrock = boto3.client(
+    "bedrock-runtime",
+    config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
+)
 
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
 # 256 dimensions is the smallest Titan V2 size: smaller index, same price.
@@ -19,6 +26,7 @@ EMBED_DIMENSIONS = int(os.environ.get("EMBED_DIMENSIONS", "256"))
 CHUNK_SIZE = 1000  # characters, roughly 200 to 250 tokens
 CHUNK_OVERLAP = 150  # so a sentence cut at a boundary still appears whole once
 MAX_CHUNKS = 200  # cost guard: a huge upload can't run up a bill
+PAUSE_SECONDS = float(os.environ.get("EMBED_PAUSE_SECONDS", "0.5"))  # pace calls
 SUPPORTED = (".txt", ".md")
 
 
@@ -66,7 +74,10 @@ def handler(event, context):
         body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
         chunks = chunk_text(body.decode("utf-8", errors="replace"))[:MAX_CHUNKS]
 
-        entries = [{"text": c, "vector": embed(c)} for c in chunks]
+        entries = []
+        for c in chunks:
+            entries.append({"text": c, "vector": embed(c)})
+            time.sleep(PAUSE_SECONDS)
         s3.put_object(
             Bucket=bucket,
             Key=index_key_for(key),
