@@ -45,7 +45,7 @@ Nothing here runs when idle. Check current prices on the AWS pricing pages befor
 
 - An AWS account and the AWS CLI configured (`aws sts get-caller-identity` works)
 - Terraform 1.6 or newer
-- In the Bedrock console (us-east-1), confirm access to **Titan Text Embeddings V2** and **Amazon Nova Micro**. You need this from step 2 on.
+- Nothing to enable in Bedrock: Titan and Nova models switch on automatically the first time your account calls them.
 
 ## Deploy step 1
 
@@ -66,6 +66,26 @@ BUCKET=$(terraform output -raw notes_bucket)
 aws s3 cp ../README.md s3://$BUCKET/notes/
 aws s3 ls s3://$BUCKET/notes/
 ```
+
+## Deploy step 2: ingest
+
+Bedrock models are enabled automatically on first use, so just run:
+
+```bash
+cd infra
+terraform apply          # adds the ingest Lambda, its IAM role, log group and S3 trigger
+BUCKET=$(terraform output -raw notes_bucket)
+aws s3 cp ../README.md s3://$BUCKET/notes/readme.md
+sleep 20
+aws s3 ls s3://$BUCKET/index/                       # readme.md.json should appear
+aws logs tail /aws/lambda/ask-my-notes-ingest --since 5m
+```
+
+What happened: S3 fired an event, the Lambda split the file into ~1,000-character chunks that overlap by 150, sent each chunk to Titan, and saved the text plus a 256-number vector per chunk to `index/`. Download the JSON and look at it to see what an embedding looks like.
+
+Only `.txt` and `.md` are supported for now. Each file is capped at 200 chunks so one huge upload can't run up a bill.
+
+Run the unit tests locally with `cd lambdas/ingest && python -m pytest`.
 
 ## Teardown (do this whenever you're done for a while)
 
