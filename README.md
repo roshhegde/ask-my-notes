@@ -116,12 +116,12 @@ Unit tests: `cd lambdas/ask && python -m pytest`.
 
 ```bash
 cd infra && terraform output -raw ask_url    # copy this
-open ../web/index.html                       # opens in your browser
+cd ../web && python3 -m http.server 8000     # leave running; Ctrl+C to stop
 ```
 
-Paste the URL into the first box, ask a question, and press **Ask** (or Cmd+Enter). The page remembers the URL.
+Open http://localhost:8000, paste the URL into the first box, ask a question, and press **Ask** (or Cmd+Enter). The page remembers the URL.
 
-The page runs straight from your disk, so there's no hosting and no cost. It works because the HTTP API allows cross-origin requests (CORS). Hosting it publicly with S3 + CloudFront is possible later, but anyone with the link could then spend your Bedrock budget, so that would need a login first.
+Why a local server instead of double-clicking the file? Safari blocks pages opened from disk (`file://`) from calling other websites. Serving from `localhost` avoids that. There's still no hosting and no cost: it works because the HTTP API allows cross-origin requests (CORS). Hosting it publicly with S3 + CloudFront is possible later, but anyone with the link could then spend your Bedrock budget, so that would need a login first.
 
 ## Teardown (do this whenever you're done for a while)
 

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ask My Notes</title>
   <!--
-    Open this file straight from your computer (double-click it).
-    No hosting needed, so it costs nothing. The API allows any origin (CORS).
+    Serve it locally: `cd web && python3 -m http.server 8000`, then open
+    http://localhost:8000. No hosting needed. The API allows any origin (CORS).
   -->
   <style>
     :root { --bg: #f7f7f5; --fg: #1d1d1f; --muted: #6b6b70; --card: #fff; --line: #e2e2e0; --accent: #2f6fde; }
@@ -90,7 +90,7 @@
       else if (!res.ok) show(data.error || data.message || `Error ${res.status}`, null, true);
       else show(data.answer, data.sources);
     } catch (e) {
-      show("Couldn't reach the API. Check the URL and that step 3 is deployed.", null, true);
+      show("Couldn't reach the API. Check the URL, that step 3 is deployed, and that this page is served from http://localhost (not opened as a file).", null, true);
     } finally {
       btn.disabled = false;
       btn.textContent = "Ask";
