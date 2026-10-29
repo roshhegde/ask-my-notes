@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask My Notes</title>
+  <!--
+    Serve it locally: `cd web && python3 -m http.server 8000`, then open
+    http://localhost:8000. No hosting needed. The API allows any origin (CORS).
+  -->
+  <style>
+    :root { --bg: #f7f7f5; --fg: #1d1d1f; --muted: #6b6b70; --card: #fff; --line: #e2e2e0; --accent: #2f6fde; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #161618; --fg: #ececee; --muted: #9a9aa0; --card: #202023; --line: #333338; --accent: #6f9cff; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 16px; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    p.sub { color: var(--muted); margin: 0 0 24px; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+    input, textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--card); color: var(--fg); font: inherit; }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { margin-bottom: 16px; }
+    button { padding: 10px 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff;
+      font: inherit; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .answer { margin-top: 24px; padding: 16px; background: var(--card); border: 1px solid var(--line);
+      border-radius: 10px; white-space: pre-wrap; }
+    .sources { margin-top: 8px; font-size: .85rem; color: var(--muted); }
+    .error { color: #d23c3c; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Ask My Notes</h1>
+  <p class="sub">Answers come only from the notes you uploaded to S3.</p>
+
+  <div class="row">
+    <label for="url">API URL (run <code>terraform output -raw ask_url</code>)</label>
+    <input id="url" placeholder="https://xxxx.execute-api.us-east-1.amazonaws.com/ask">
+  </div>
+  <div class="row">
+    <label for="q">Your question</label>
+    <textarea id="q" maxlength="500" placeholder="What did I write about Lambda pricing?"></textarea>
+  </div>
+  <button id="ask">Ask</button>
+
+  <div id="out"></div>
+</main>
+<script>
+  const urlInput = document.getElementById("url");
+  const q = document.getElementById("q");
+  const btn = document.getElementById("ask");
+  const out = document.getElementById("out");
+
+  try { urlInput.value = localStorage.getItem("askUrl") || ""; } catch (e) {}
+
+  function show(text, sources, isError) {
+    out.innerHTML = "";
+    const box = document.createElement("div");
+    box.className = "answer" + (isError ? " error" : "");
+    box.textContent = text;
+    if (sources && sources.length) {
+      const s = document.createElement("div");
+      s.className = "sources";
+      s.textContent = "Sources: " + sources.join(", ");
+      box.appendChild(s);
+    }
+    out.appendChild(box);
+  }
+
+  async function ask() {
+    const url = urlInput.value.trim();
+    const question = q.value.trim();
+    if (!url || !question) return show("Fill in both the API URL and a question.", null, true);
+    try { localStorage.setItem("askUrl", url); } catch (e) {}
+
+    btn.disabled = true;
+    btn.textContent = "Thinking…";
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 429) show("Too many requests. Wait a second and try again.", null, true);
+      else if (!res.ok) show(data.error || data.message || `Error ${res.status}`, null, true);
+      else show(data.answer, data.sources);
+    } catch (e) {
+      show("Couldn't reach the API. Check the URL, that step 3 is deployed, and that this page is served from http://localhost (not opened as a file).", null, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Ask";
+    }
+  }
+
+  btn.addEventListener("click", ask);
+  q.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
+</script>
+</body>
+</html>

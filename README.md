@@ -112,6 +112,17 @@ The API has no login, so it is throttled to 1 request per second and questions a
 
 Unit tests: `cd lambdas/ask && python -m pytest`.
 
+## Step 4: a tiny web page
+
+```bash
+cd infra && terraform output -raw ask_url    # copy this
+cd ../web && python3 -m http.server 8000     # leave running; Ctrl+C to stop
+```
+
+Open http://localhost:8000, paste the URL into the first box, ask a question, and press **Ask** (or Cmd+Enter). The page remembers the URL.
+
+Why a local server instead of double-clicking the file? Safari blocks pages opened from disk (`file://`) from calling other websites. Serving from `localhost` avoids that. There's still no hosting and no cost: it works because the HTTP API allows cross-origin requests (CORS). Hosting it publicly with S3 + CloudFront is possible later, but anyone with the link could then spend your Bedrock budget, so that would need a login first.
+
 ## Teardown (do this whenever you're done for a while)
 
 ```bash
