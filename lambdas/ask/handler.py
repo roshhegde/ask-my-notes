@@ -8,9 +8,14 @@ import math
 import os
 
 import boto3
+from botocore.config import Config
 
 s3 = boto3.client("s3")
-bedrock = boto3.client("bedrock-runtime")
+# Back off instead of failing when a new account's low Bedrock quota is hit.
+bedrock = boto3.client(
+    "bedrock-runtime",
+    config=Config(retries={"max_attempts": 6, "mode": "adaptive"}),
+)
 
 BUCKET = os.environ["NOTES_BUCKET"]
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
