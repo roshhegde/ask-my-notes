@@ -69,12 +69,14 @@ resource "aws_lambda_function" "ingest" {
   # MAX_CHUNKS in handler.py caps Bedrock calls per file. No reserved
   # concurrency: new accounts often have a limit of 10, and reserving any
   # of it makes the apply fail.
-  timeout = 120
+  # 200 chunks x (0.5s pause + call time) fits inside 5 minutes.
+  timeout = 300
 
   environment {
     variables = {
-      EMBED_MODEL_ID   = var.embed_model_id
-      EMBED_DIMENSIONS = "256"
+      EMBED_MODEL_ID      = var.embed_model_id
+      EMBED_DIMENSIONS    = "256"
+      EMBED_PAUSE_SECONDS = "0.5"
     }
   }
 

@@ -1,4 +1,8 @@
-from handler import chunk_text, index_key_for
+import os
+
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+
+from handler import chunk_text, index_key_for  # noqa: E402
 
 
 def test_short_text_is_one_chunk():
