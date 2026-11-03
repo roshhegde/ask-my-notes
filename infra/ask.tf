@@ -68,16 +68,15 @@ resource "aws_lambda_function" "ask" {
   handler          = "handler.handler"
   filename         = data.archive_file.ask.output_path
   source_code_hash = data.archive_file.ask.output_base64sha256
-  memory_size      = 512 # more memory = more CPU for the similarity math
-  timeout          = 30
+  memory_size      = 512                       # more memory = more CPU for the similarity math
+  timeout          = local.use_floci ? 90 : 30 # a laptop model is slower than Bedrock
 
   environment {
-    variables = {
-      NOTES_BUCKET     = aws_s3_bucket.notes.bucket
-      EMBED_MODEL_ID   = var.embed_model_id
-      EMBED_DIMENSIONS = "256"
-      CHAT_MODEL_ID    = var.chat_model_id
-    }
+    variables = merge(local.embed_env, {
+      NOTES_BUCKET = aws_s3_bucket.notes.bucket
+      # Locally, Floci forwards this Converse call to Ollama (see local/compose.yaml).
+      CHAT_MODEL_ID = var.chat_model_id
+    })
   }
 
   depends_on = [aws_cloudwatch_log_group.ask]

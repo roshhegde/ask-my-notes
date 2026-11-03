@@ -8,6 +8,7 @@ import json
 import os
 import time
 import urllib.parse
+import urllib.request
 
 import boto3
 from botocore.config import Config
@@ -20,6 +21,10 @@ bedrock = boto3.client(
     config=Config(retries={"max_attempts": 10, "mode": "adaptive"}),
 )
 
+# "bedrock" on AWS; "ollama" when running locally on Floci (no Titan there).
+EMBED_BACKEND = os.environ.get("EMBED_BACKEND", "bedrock")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
+OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
 # 256 dimensions is the smallest Titan V2 size: smaller index, same price.
 EMBED_DIMENSIONS = int(os.environ.get("EMBED_DIMENSIONS", "256"))
@@ -47,7 +52,19 @@ def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
     return [c for c in chunks if c]
 
 
+def embed_ollama(text):
+    request = urllib.request.Request(
+        f"{OLLAMA_URL}/api/embed",
+        data=json.dumps({"model": OLLAMA_EMBED_MODEL, "input": text}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.loads(response.read())["embeddings"][0]
+
+
 def embed(text):
+    if EMBED_BACKEND == "ollama":
+        return embed_ollama(text)
     response = bedrock.invoke_model(
         modelId=EMBED_MODEL_ID,
         body=json.dumps(

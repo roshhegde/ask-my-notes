@@ -5,5 +5,6 @@ output "notes_bucket" {
 
 output "ask_url" {
   description = "POST {\"question\": \"...\"} here"
-  value       = "${aws_apigatewayv2_api.http.api_endpoint}/ask"
+  # Floci serves HTTP APIs under localhost:4566/execute-api/<id>/<stage>/...
+  value = local.use_floci ? "${local.floci_url}/execute-api/${aws_apigatewayv2_api.http.id}/$default/ask" : "${aws_apigatewayv2_api.http.api_endpoint}/ask"
 }

@@ -2,6 +2,19 @@
 
 data "aws_caller_identity" "current" {}
 
+# Floci can't run Titan, so locally the Lambdas embed with Ollama instead.
+locals {
+  embed_env = local.use_floci ? {
+    EMBED_BACKEND      = "ollama"
+    OLLAMA_URL         = local.ollama_url
+    OLLAMA_EMBED_MODEL = var.ollama_embed_model
+    } : {
+    EMBED_BACKEND    = "bedrock"
+    EMBED_MODEL_ID   = var.embed_model_id
+    EMBED_DIMENSIONS = "256"
+  }
+}
+
 data "archive_file" "ingest" {
   type        = "zip"
   source_file = "${path.module}/../lambdas/ingest/handler.py"
@@ -73,11 +86,10 @@ resource "aws_lambda_function" "ingest" {
   timeout = 300
 
   environment {
-    variables = {
-      EMBED_MODEL_ID      = var.embed_model_id
-      EMBED_DIMENSIONS    = "256"
-      EMBED_PAUSE_SECONDS = "0.5"
-    }
+    variables = merge(local.embed_env, {
+      # No quota to respect locally, so no pause between chunks.
+      EMBED_PAUSE_SECONDS = local.use_floci ? "0" : "0.5"
+    })
   }
 
   depends_on = [aws_cloudwatch_log_group.ingest]

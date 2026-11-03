@@ -123,6 +123,49 @@ Open http://localhost:8000, paste the URL into the first box, ask a question, an
 
 Why a local server instead of double-clicking the file? Safari blocks pages opened from disk (`file://`) from calling other websites. Serving from `localhost` avoids that. There's still no hosting and no cost: it works because the HTTP API allows cross-origin requests (CORS). Hosting it publicly with S3 + CloudFront is possible later, but anyone with the link could then spend your Bedrock budget, so that would need a login first.
 
+## Run it locally for free (Floci + Ollama)
+
+No AWS account, no Bedrock quota, $0. [Floci](https://github.com/floci-io/floci) emulates S3, Lambda, API Gateway and friends in Docker, and [Ollama](https://ollama.com) runs the AI models on your Mac. The same Terraform deploys to either one: the `local` workspace targets Floci, and the `default` workspace targets real AWS. Each workspace keeps its own state.
+
+How the AI parts are swapped:
+- **Embeddings:** locally, the Lambdas call Ollama's `nomic-embed-text` directly (`EMBED_BACKEND=ollama`), because Floci can't run Titan.
+- **Answers:** the ask Lambda still calls Bedrock `Converse`. Floci forwards that call to Ollama's `llama3.2:3b` (see `local/compose.yaml`), so the Lambda code doesn't change at all.
+
+**One-time setup**
+1. Install and open [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2. Install [Ollama](https://ollama.com/download), open it, then pull the two models (about 2.3 GB):
+   ```bash
+   ollama pull nomic-embed-text
+   ollama pull llama3.2:3b
+   ```
+
+**Start and deploy**
+```bash
+docker compose -f local/compose.yaml up -d     # starts Floci on localhost:4566
+cd infra
+terraform init
+terraform workspace new local                  # first time only; later: terraform workspace select local
+terraform apply                                # 17 resources, all local
+```
+
+**Try it**
+```bash
+source ../local/env.sh                         # this terminal's AWS CLI now talks to Floci
+BUCKET=$(terraform output -raw notes_bucket)
+aws s3 cp ../README.md s3://$BUCKET/notes/readme.md
+sleep 30                                       # the first run pulls the Lambda image (~700 MB)
+aws s3 ls s3://$BUCKET/index/
+curl -s -X POST "$(terraform output -raw ask_url)" -H 'content-type: application/json' \
+  -d '{"question": "Why does this project avoid OpenSearch?"}'
+```
+The web page works too: serve it (see step 4) and paste the local `ask_url`.
+
+**Back to real AWS:** open a new terminal, then `cd infra && terraform workspace select default`.
+
+**Stop:** `docker compose -f local/compose.yaml down`. Floci forgets everything when stopped, and the next `terraform apply` in the `local` workspace recreates it.
+
+**If answers fail with a connection error to Ollama:** quit the Ollama app and run `OLLAMA_HOST=0.0.0.0 ollama serve` so Docker containers can reach it.
+
 ## Teardown (do this whenever you're done for a while)
 
 ```bash
