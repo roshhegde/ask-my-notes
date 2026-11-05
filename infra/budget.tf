@@ -2,6 +2,9 @@
 # and when AWS forecasts you'll pass 100% this month.
 # The first two AWS Budgets per account are free.
 resource "aws_budgets_budget" "monthly" {
+  # Nothing to bill locally on Floci, so only create it on real AWS.
+  count = local.use_floci ? 0 : 1
+
   name         = "${var.project_name}-monthly"
   budget_type  = "COST"
   limit_amount = var.monthly_budget_usd
@@ -23,4 +26,10 @@ resource "aws_budgets_budget" "monthly" {
     notification_type          = "FORECASTED"
     subscriber_email_addresses = [var.alert_email]
   }
+}
+
+# The budget became a counted resource; this keeps the existing one on real AWS.
+moved {
+  from = aws_budgets_budget.monthly
+  to   = aws_budgets_budget.monthly[0]
 }

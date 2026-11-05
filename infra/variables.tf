@@ -32,3 +32,9 @@ variable "chat_model_id" {
   type        = string
   default     = "amazon.nova-micro-v1:0"
 }
+
+variable "ollama_embed_model" {
+  description = "Ollama embedding model used in the local (Floci) workspace."
+  type        = string
+  default     = "nomic-embed-text"
+}

@@ -1,0 +1,21 @@
+# Free local AWS: Floci emulates S3, Lambda, API Gateway, etc. on your Mac.
+# Start it with:  docker compose -f local/compose.yaml up -d
+services:
+  floci:
+    image: floci/floci:2.4.0
+    ports:
+      - "4566:4566"
+    volumes:
+      # Floci runs each Lambda in its own Docker container, so it needs Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      # Lets Floci reach Ollama on your Mac (needed on Linux; automatic on Docker Desktop).
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Floci's Bedrock is a stub by default. "proxy" forwards Converse calls to
+      # Ollama, so the ask Lambda gets real answers without any Bedrock quota.
+      FLOCI_SERVICES_BEDROCK_RUNTIME_BACKEND: proxy
+      FLOCI_SERVICES_BEDROCK_RUNTIME_PROXY_URL: http://host.docker.internal:11434/v1
+      FLOCI_SERVICES_BEDROCK_RUNTIME_PROXY_DEFAULT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
+      # Lambda containers call Ollama directly for embeddings.
+      FLOCI_SERVICES_LAMBDA_EXTRA_HOSTS: host.docker.internal:host-gateway

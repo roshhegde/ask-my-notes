@@ -6,6 +6,7 @@ POST /ask {"question": "..."} -> {"answer": "...", "sources": [...]}
 import json
 import math
 import os
+import urllib.request
 
 import boto3
 from botocore.config import Config
@@ -18,6 +19,10 @@ bedrock = boto3.client(
 )
 
 BUCKET = os.environ["NOTES_BUCKET"]
+# "bedrock" on AWS; "ollama" when running locally on Floci (no Titan there).
+EMBED_BACKEND = os.environ.get("EMBED_BACKEND", "bedrock")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://host.docker.internal:11434")
+OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
 EMBED_DIMENSIONS = int(os.environ.get("EMBED_DIMENSIONS", "256"))
 CHAT_MODEL_ID = os.environ.get("CHAT_MODEL_ID", "amazon.nova-micro-v1:0")
@@ -71,7 +76,19 @@ def build_prompt(question, chunks):
     return f"Notes:\n{context}\n\nQuestion: {question}"
 
 
+def embed_ollama(text):
+    request = urllib.request.Request(
+        f"{OLLAMA_URL}/api/embed",
+        data=json.dumps({"model": OLLAMA_EMBED_MODEL, "input": text}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.loads(response.read())["embeddings"][0]
+
+
 def embed(text):
+    if EMBED_BACKEND == "ollama":
+        return embed_ollama(text)
     response = bedrock.invoke_model(
         modelId=EMBED_MODEL_ID,
         body=json.dumps(
